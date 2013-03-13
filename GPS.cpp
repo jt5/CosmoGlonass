@@ -30,30 +30,25 @@ char NMEA_BUF[128];
 
 typedef struct 
 {
-	
 }
 tGPRMC;
 
 void GPSClass::begin()
 {
-	
 }
 
 void GPSClass::end()
 {
-	
 }
 
-const char _GPGSV[] PROGMEM = "GPGSV"; 
-const char _GLGSV[] PROGMEM = "GLGS";
+const char _xxGSV[] PROGMEM = "GSV"; 
 const char _GPRMC[] PROGMEM = "GPRMC";
 const char _GPGGA[] PROGMEM = "GPGGA";
 const char _GNGSA[] PROGMEM = "GNGSA";
 
 enum
 {
-	GPGSV =1,
-	GLGSV =2,
+	xxGSV =1,
 	GPRMC =3,
 	GPGGA =4,
 	GNGSA =5,
@@ -63,8 +58,7 @@ enum
 
 u8 NMEA_ID (char* pSrc)
 {
-	if		(strstr_P(pSrc, _GPGSV)) return GPGSV;
-	else if (strstr_P(pSrc, _GLGSV)) return GLGSV;
+	if		(strstr_P(pSrc, _xxGSV)) return xxGSV;
 	else if (strstr_P(pSrc, _GPRMC)) return GPRMC;
 	else if (strstr_P(pSrc, _GPGGA)) return GPGGA;
 	else if (strstr_P(pSrc, _GNGSA)) return GNGSA;
@@ -109,7 +103,9 @@ float GPS_f_longitude;
 u32 GPS_speed;
 u32 GPS_course;
 u32 GPS_date;
-u8  GPS_sats;
+
+u8  GPS_GP_sats;
+u8  GPS_GL_sats;
 u32 GPS_hdop;
 u32 GPS_vdop;
 u32 GPS_pdop;
@@ -162,8 +158,7 @@ float parse_lat(char* p)
 	u16 MMMM = 0x0000;
 	
 	float Dec;
-		
-	
+
 	DD = ((u16) (*p) - '0') * 10 + (*(p+1)) - '0';
 	MM = ((u16) (*(p+2)) - '0') * 10 + (*(p+3)) - '0';
 
@@ -237,8 +232,7 @@ u8 process_GPGGA(char * pSrc)
 	if (atol(pSrc)>0) GPS_valid = 1;
 	else GPS_valid = 0;
 	
-	pSrc = shift_words(pSrc);	
-	GPS_sats = (u8)atol (pSrc);	
+	pSrc = shift_words(pSrc);
 	
 	pSrc = shift_words(pSrc);	
 	GPS_hdop = parse_decimal (pSrc);
@@ -260,6 +254,25 @@ u8 process_GNGSA(char * pSrc)
 	GPS_vdop = parse_decimal (pSrc);	
 }	
 	
+	
+u8 process_xxGSV(char * pSrc)
+{
+	u8 Sat_type, sats;
+	if (pSrc[1] == 'P')
+	{
+		Sat_type = 1; // GPS sats
+	}	
+	else if (pSrc[1] == 'L')
+	{
+		Sat_type = 2; // GLONASS sats
+	}
+	pSrc = shift_words(pSrc);
+	pSrc = shift_words(pSrc);
+	pSrc = shift_words(pSrc);
+	sats = (u8) atol (pSrc);
+	if (Sat_type == 1)		GPS_GP_sats = sats;	
+	else if (Sat_type == 2)	GPS_GL_sats = sats;
+}
 
 u8 process_message()
 {	
@@ -277,6 +290,11 @@ u8 process_message()
 	else if (message_ID == GNGSA)
 	{
 		process_GNGSA(NMEA_BUF);
+		return 1;
+	}
+	else if (message_ID == xxGSV)
+	{
+		process_xxGSV(NMEA_BUF);
 		return 1;
 	}
 	else return 0;
@@ -386,9 +404,14 @@ float GPSClass :: get_course()
 	return (float) GPS_course / 100.0;	
 }
 
-u8 GPSClass :: get_sats()
+u8 GPSClass :: get_GPS_sats()
 {
-	return GPS_sats;
+	return GPS_GP_sats;
+}
+
+u8 GPSClass :: get_GLONASS_sats()
+{
+	return GPS_GL_sats;
 }
 
 u8 GPSClass :: get_status()
@@ -412,4 +435,3 @@ float GPSClass :: get_pdop()
 {
 	return (float) GPS_pdop / 100.0;
 }
-

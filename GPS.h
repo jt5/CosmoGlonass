@@ -37,7 +37,9 @@ class GPSClass{
 	static float get_altitude();
 	static float get_speed();
 	static float get_course();
-	static u8 get_sats();
+	
+	static u8 get_GPS_sats();
+	static u8 get_GLONASS_sats();
 	static u8 get_status();
 	static float get_hdop();
 	static float get_vdop();
